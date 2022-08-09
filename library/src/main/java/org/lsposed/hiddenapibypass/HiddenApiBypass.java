@@ -16,15 +16,11 @@
 
 package org.lsposed.hiddenapibypass;
 
-import android.os.Build;
+import static android.os.Build.VERSION.SDK_INT;
+
+import android.annotation.TargetApi;
+import android.content.Context;
 import android.util.Log;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.annotation.VisibleForTesting;
-
-import org.lsposed.hiddenapibypass.library.BuildConfig;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleInfo;
@@ -42,13 +38,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import dalvik.system.VMRuntime;
-import sun.misc.Unsafe;
-
-@RequiresApi(Build.VERSION_CODES.P)
+@TargetApi(28)
 public final class HiddenApiBypass {
-    private static final String TAG = "HiddenApiBypass";
-    private static final Unsafe unsafe;
     private static final long methodOffset;
     private static final long classOffset;
     private static final long artOffset;
@@ -65,28 +56,25 @@ public final class HiddenApiBypass {
 
     static {
         try {
-            //noinspection JavaReflectionMemberAccess DiscouragedPrivateApi
-            unsafe = (Unsafe) Unsafe.class.getDeclaredMethod("getUnsafe").invoke(null);
-            assert unsafe != null;
-            methodOffset = unsafe.objectFieldOffset(Helper.Executable.class.getDeclaredField("artMethod"));
-            classOffset = unsafe.objectFieldOffset(Helper.Executable.class.getDeclaredField("declaringClass"));
-            artOffset = unsafe.objectFieldOffset(Helper.MethodHandle.class.getDeclaredField("artFieldOrMethod"));
-            infoOffset = unsafe.objectFieldOffset(Helper.MethodHandleImpl.class.getDeclaredField("info"));
-            methodsOffset = unsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("methods"));
-            iFieldOffset = unsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("iFields"));
-            sFieldOffset = unsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("sFields"));
-            memberOffset = unsafe.objectFieldOffset(Helper.HandleInfo.class.getDeclaredField("member"));
+            methodOffset = Mu.objectFieldOffset(Helper.Executable.class.getDeclaredField("artMethod"));
+            classOffset = Mu.objectFieldOffset(Helper.Executable.class.getDeclaredField("declaringClass"));
+            artOffset = Mu.objectFieldOffset(Helper.MethodHandle.class.getDeclaredField("artFieldOrMethod"));
+            infoOffset = Mu.objectFieldOffset(Helper.MethodHandleImpl.class.getDeclaredField("info"));
+            methodsOffset = Mu.objectFieldOffset(Helper.Class.class.getDeclaredField("methods"));
+            iFieldOffset = Mu.objectFieldOffset(Helper.Class.class.getDeclaredField("iFields"));
+            sFieldOffset = Mu.objectFieldOffset(Helper.Class.class.getDeclaredField("sFields"));
+            memberOffset = Mu.objectFieldOffset(Helper.HandleInfo.class.getDeclaredField("member"));
             Method mA = Helper.NeverCall.class.getDeclaredMethod("a");
             Method mB = Helper.NeverCall.class.getDeclaredMethod("b");
             mA.setAccessible(true);
             mB.setAccessible(true);
             MethodHandle mhA = MethodHandles.lookup().unreflect(mA);
             MethodHandle mhB = MethodHandles.lookup().unreflect(mB);
-            long aAddr = unsafe.getLong(mhA, artOffset);
-            long bAddr = unsafe.getLong(mhB, artOffset);
-            long aMethods = unsafe.getLong(Helper.NeverCall.class, methodsOffset);
+            long aAddr = Mu.getLong(mhA, artOffset);
+            long bAddr = Mu.getLong(mhB, artOffset);
+            long aMethods = Mu.getLong(Helper.NeverCall.class, methodsOffset);
             artMethodSize = bAddr - aAddr;
-            if (BuildConfig.DEBUG) Log.v(TAG, artMethodSize + " " +
+            LL.v("[satic artMethodSize]" + artMethodSize + " " +
                     Long.toString(aAddr, 16) + ", " +
                     Long.toString(bAddr, 16) + ", " +
                     Long.toString(aMethods, 16));
@@ -97,22 +85,63 @@ public final class HiddenApiBypass {
             fJ.setAccessible(true);
             MethodHandle mhI = MethodHandles.lookup().unreflectGetter(fI);
             MethodHandle mhJ = MethodHandles.lookup().unreflectGetter(fJ);
-            long iAddr = unsafe.getLong(mhI, artOffset);
-            long jAddr = unsafe.getLong(mhJ, artOffset);
-            long iFields = unsafe.getLong(Helper.NeverCall.class, iFieldOffset);
+            long iAddr = Mu.getLong(mhI, artOffset);
+            long jAddr = Mu.getLong(mhJ, artOffset);
+            long iFields = Mu.getLong(Helper.NeverCall.class, iFieldOffset);
             artFieldSize = jAddr - iAddr;
-            if (BuildConfig.DEBUG) Log.v(TAG, artFieldSize + " " +
+            LL.v("[satic artFieldSize]" + artFieldSize + " " +
                     Long.toString(iAddr, 16) + ", " +
                     Long.toString(jAddr, 16) + ", " +
                     Long.toString(iFields, 16));
             artFieldBias = iAddr - iFields;
-        } catch (ReflectiveOperationException e) {
-            Log.e(TAG, "Initialize error", e);
+        } catch (Throwable e) {
+            LL.e("Initialize error\r\n" + Log.getStackTraceString(e));
             throw new ExceptionInInitializerError(e);
         }
     }
 
-    @VisibleForTesting
+    public static int unseal(Context context) {
+        if (SDK_INT < 28) {
+            // Below Android P, ignore
+            return 0;
+        }
+
+        // try exempt API first.
+        if (exemptAll()) {
+            return 0;
+        }
+
+        return -1;
+    }
+
+    private static boolean exemptAll() {
+        return setHiddenApiExemptions(new String[]{
+                "L",
+                "Landroid/",
+                "Landroid/app/",
+                "Landroid/content/",
+                "Landroid/view/",
+                "Lcom/",
+                "Ljava/lang/",
+                "Ljava/",
+                "Ldalvik/",
+                "Llibcore/",
+                "Ldalvik/system/",
+                "Ldalvik/system/DexFile",
+                "Ldalvik/system/VMRuntime",
+                "Lsun/"
+                , "Lhuawei/"
+        });
+
+        //passApiCheck
+        // addReflectionWhiteList("Landroid/",
+        //                    "Lcom/android/",
+        //                    "Ljava/lang/",
+        //                    "Ldalvik/system/",
+        //                    "Llibcore/io/")
+
+    }
+
     static boolean checkArgsForInvokeMethod(Class<?>[] params, Object[] args) {
         if (params.length != args.length) return false;
         for (int i = 0; i < params.length; ++i) {
@@ -138,22 +167,22 @@ public final class HiddenApiBypass {
      * @return the new instance
      * @see Constructor#newInstance(Object...)
      */
-    public static Object newInstance(@NonNull Class<?> clazz, Object... initargs) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public static Object newInstance(Class<?> clazz, Object... initargs) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         Method stub = Helper.InvokeStub.class.getDeclaredMethod("invoke", Object[].class);
         Constructor<?> ctor = Helper.InvokeStub.class.getDeclaredConstructor(Object[].class);
         ctor.setAccessible(true);
-        long methods = unsafe.getLong(clazz, methodsOffset);
+        long methods = Mu.getLong(clazz, methodsOffset);
         if (methods == 0) throw new NoSuchMethodException("Cannot find matching constructor");
-        int numMethods = unsafe.getInt(methods);
-        if (BuildConfig.DEBUG) Log.d(TAG, clazz + " has " + numMethods + " methods");
+        int numMethods = Mu.getInt(methods);
+        LL.d("[newInstance]" + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            unsafe.putLong(stub, methodOffset, method);
-            if (BuildConfig.DEBUG) Log.v(TAG, "got " + clazz.getTypeName() + "." + stub.getName() +
+            Mu.putLong(stub, methodOffset, method);
+            LL.v("[newInstance] got " + clazz.getTypeName() + "." + stub.getName() +
                     "(" + Arrays.stream(stub.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             if ("<init>".equals(stub.getName())) {
-                unsafe.putLong(ctor, methodOffset, method);
-                unsafe.putObject(ctor, classOffset, clazz);
+                Mu.putLong(ctor, methodOffset, method);
+                Mu.putObject(ctor, classOffset, clazz);
                 Class<?>[] params = ctor.getParameterTypes();
                 if (checkArgsForInvokeMethod(params, initargs))
                     return ctor.newInstance(initargs);
@@ -172,22 +201,23 @@ public final class HiddenApiBypass {
      * @return the return value of the method
      * @see Method#invoke(Object, Object...)
      */
-    public static Object invoke(@NonNull Class<?> clazz, @Nullable Object thiz, @NonNull String methodName, Object... args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static Object invoke(Class<?> clazz, Object thiz, String methodName, Object... args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         if (thiz != null && !clazz.isInstance(thiz)) {
             throw new IllegalArgumentException("this object is not an instance of the given class");
         }
         Method stub = Helper.InvokeStub.class.getDeclaredMethod("invoke", Object[].class);
         stub.setAccessible(true);
-        long methods = unsafe.getLong(clazz, methodsOffset);
+        long methods = Mu.getLong(clazz, methodsOffset);
         if (methods == 0) throw new NoSuchMethodException("Cannot find matching method");
-        int numMethods = unsafe.getInt(methods);
-        if (BuildConfig.DEBUG) Log.d(TAG, clazz + " has " + numMethods + " methods");
+        int numMethods = Mu.getInt(methods);
+        LL.d("[invoke] " + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            unsafe.putLong(stub, methodOffset, method);
-            if (BuildConfig.DEBUG) Log.v(TAG, "got " + clazz.getTypeName() + "." + stub.getName() +
+            Mu.putLong(stub, methodOffset, method);
+            LL.v("[invoke] got " + clazz.getTypeName() + "." + stub.getName() +
                     "(" + Arrays.stream(stub.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             if (methodName.equals(stub.getName())) {
+                LL.i("[invoke] 方法配置成功");
                 Class<?>[] params = stub.getParameterTypes();
                 if (checkArgsForInvokeMethod(params, args))
                     return stub.invoke(thiz, args);
@@ -202,8 +232,7 @@ public final class HiddenApiBypass {
      * @param clazz the class to fetch declared methods (including constructors with name `&lt;init&gt;`)
      * @return list of declared methods of {@code clazz}
      */
-    @NonNull
-    public static List<Executable> getDeclaredMethods(@NonNull Class<?> clazz) {
+    public static List<Executable> getDeclaredMethods(Class<?> clazz) {
         ArrayList<Executable> list = new ArrayList<>();
         if (clazz.isPrimitive() || clazz.isArray()) return list;
         MethodHandle mh;
@@ -214,23 +243,22 @@ public final class HiddenApiBypass {
         } catch (NoSuchMethodException | IllegalAccessException e) {
             return list;
         }
-        long methods = unsafe.getLong(clazz, methodsOffset);
+        long methods = Mu.getLong(clazz, methodsOffset);
         if (methods == 0) return list;
-        int numMethods = unsafe.getInt(methods);
-        if (BuildConfig.DEBUG) Log.d(TAG, clazz + " has " + numMethods + " methods");
+        int numMethods = Mu.getInt(methods);
+        LL.d("[getDeclaredMethods]" + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            unsafe.putLong(mh, artOffset, method);
-            unsafe.putObject(mh, infoOffset, null);
+            Mu.putLong(mh, artOffset, method);
+            Mu.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) unsafe.getObject(mh, infoOffset);
-            Executable member = (Executable) unsafe.getObject(info, memberOffset);
-            if (BuildConfig.DEBUG)
-                Log.v(TAG, "got " + clazz.getTypeName() + "." + member.getName() +
-                        "(" + Arrays.stream(member.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
+            MethodHandleInfo info = (MethodHandleInfo) Mu.getObject(mh, infoOffset);
+            Executable member = (Executable) Mu.getObject(info, memberOffset);
+            LL.v("[getDeclaredMethods] got " + clazz.getTypeName() + "." + member.getName() +
+                    "(" + Arrays.stream(member.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             list.add(member);
         }
         return list;
@@ -244,10 +272,10 @@ public final class HiddenApiBypass {
      * @param parameterTypes argument types of the expected method with name {@code methodName}
      * @return the found method
      * @throws NoSuchMethodException when no method matches the given parameters
-     * @see Class#getDeclaredMethod(String, Class[]) 
+     * @see Class#getDeclaredMethod(String, Class[])
      */
-    @NonNull
-    public static Method getDeclaredMethod(@NonNull Class<?> clazz, @NonNull String methodName, @NonNull Class<?>... parameterTypes) throws NoSuchMethodException {
+
+    public static Method getDeclaredMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
         List<Executable> methods = getDeclaredMethods(clazz);
         allMethods:
         for (Executable method : methods) {
@@ -272,8 +300,8 @@ public final class HiddenApiBypass {
      * @throws NoSuchMethodException when no constructor matches the given parameters
      * @see Class#getDeclaredConstructor(Class[])
      */
-    @NonNull
-    public static Constructor<?> getDeclaredConstructor(@NonNull Class<?> clazz, @NonNull Class<?>... parameterTypes) throws NoSuchMethodException {
+
+    public static Constructor<?> getDeclaredConstructor(Class<?> clazz, Class<?>... parameterTypes) throws NoSuchMethodException {
         List<Executable> methods = getDeclaredMethods(clazz);
         allMethods:
         for (Executable method : methods) {
@@ -295,8 +323,8 @@ public final class HiddenApiBypass {
      * @param clazz the class to fetch declared methods
      * @return list of declared non-static fields of {@code clazz}
      */
-    @NonNull
-    public static List<Field> getInstanceFields(@NonNull Class<?> clazz) {
+
+    public static List<Field> getInstanceFields(Class<?> clazz) {
         ArrayList<Field> list = new ArrayList<>();
         if (clazz.isPrimitive() || clazz.isArray()) return list;
         MethodHandle mh;
@@ -307,22 +335,21 @@ public final class HiddenApiBypass {
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return list;
         }
-        long fields = unsafe.getLong(clazz, iFieldOffset);
+        long fields = Mu.getLong(clazz, iFieldOffset);
         if (fields == 0) return list;
-        int numFields = unsafe.getInt(fields);
-        if (BuildConfig.DEBUG) Log.d(TAG, clazz + " has " + numFields + " instance fields");
+        int numFields = Mu.getInt(fields);
+        LL.d("[getInstanceFields]" + clazz + " has " + numFields + " instance fields");
         for (int i = 0; i < numFields; i++) {
             long field = fields + i * artFieldSize + artFieldBias;
-            unsafe.putLong(mh, artOffset, field);
-            unsafe.putObject(mh, infoOffset, null);
+            Mu.putLong(mh, artOffset, field);
+            Mu.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) unsafe.getObject(mh, infoOffset);
-            Field member = (Field) unsafe.getObject(info, memberOffset);
-            if (BuildConfig.DEBUG)
-                Log.v(TAG, "got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
+            MethodHandleInfo info = (MethodHandleInfo) Mu.getObject(mh, infoOffset);
+            Field member = (Field) Mu.getObject(info, memberOffset);
+            LL.v("[getInstanceFields] got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
             list.add(member);
         }
         return list;
@@ -334,8 +361,8 @@ public final class HiddenApiBypass {
      * @param clazz the class to fetch declared methods
      * @return list of declared static fields of {@code clazz}
      */
-    @NonNull
-    public static List<Field> getStaticFields(@NonNull Class<?> clazz) {
+
+    public static List<Field> getStaticFields(Class<?> clazz) {
         ArrayList<Field> list = new ArrayList<>();
         if (clazz.isPrimitive() || clazz.isArray()) return list;
         MethodHandle mh;
@@ -346,26 +373,27 @@ public final class HiddenApiBypass {
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return list;
         }
-        long fields = unsafe.getLong(clazz, sFieldOffset);
+        long fields = Mu.getLong(clazz, sFieldOffset);
         if (fields == 0) return list;
-        int numFields = unsafe.getInt(fields);
-        if (BuildConfig.DEBUG) Log.d(TAG, clazz + " has " + numFields + " static fields");
+        int numFields = Mu.getInt(fields);
+        LL.d("[getStaticFields]" + clazz + " has " + numFields + " static fields");
         for (int i = 0; i < numFields; i++) {
             long field = fields + i * artFieldSize + artFieldBias;
-            unsafe.putLong(mh, artOffset, field);
-            unsafe.putObject(mh, infoOffset, null);
+            Mu.putLong(mh, artOffset, field);
+            Mu.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) unsafe.getObject(mh, infoOffset);
-            Field member = (Field) unsafe.getObject(info, memberOffset);
-            if (BuildConfig.DEBUG)
-                Log.v(TAG, "got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
+            MethodHandleInfo info = (MethodHandleInfo) Mu.getObject(mh, infoOffset);
+            Field member = (Field) Mu.getObject(info, memberOffset);
+            LL.v("[getStaticFields] got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
             list.add(member);
         }
         return list;
     }
+
+
 
     /**
      * Sets the list of exemptions from hidden API access enforcement.
@@ -375,13 +403,13 @@ public final class HiddenApiBypass {
      *                          the whitelist: access permitted, and no logging..
      * @return whether the operation is successful
      */
-    public static boolean setHiddenApiExemptions(@NonNull String... signaturePrefixes) {
+    public static boolean setHiddenApiExemptions(String... signaturePrefixes) {
         try {
-            Object runtime = invoke(VMRuntime.class, null, "getRuntime");
-            invoke(VMRuntime.class, runtime, "setHiddenApiExemptions", (Object) signaturePrefixes);
+            Object runtime = invoke(Class.forName("dalvik.system.VMRuntime"), null, "getRuntime");
+            invoke(Class.forName("dalvik.system.VMRuntime"), runtime, "setHiddenApiExemptions", (Object) signaturePrefixes);
             return true;
         } catch (Throwable e) {
-            Log.w(TAG, "setHiddenApiExemptions", e);
+            LL.e("setHiddenApiExemptions\r\n" + Log.getStackTraceString(e));
             return false;
         }
     }
@@ -412,4 +440,6 @@ public final class HiddenApiBypass {
         HiddenApiBypass.signaturePrefixes.clear();
         return setHiddenApiExemptions();
     }
+
+
 }

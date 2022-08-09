@@ -10,13 +10,14 @@ Bypass restrictions on non-SDK interfaces.
 - Reliable: does not rely on specific behaviors, so it will not be blocked like meta-reflection or `dexfile`.
 - Stable: `unsafe`, art structs and `setHiddenApiExemptions` are stable APIs.
 
-[How it works (Chinese)](https://lovesykun.cn/archives/android-hidden-api-bypass.html)
+[comment]: <> ([How it works &#40;Chinese&#41;]&#40;https://lovesykun.cn/archives/android-hidden-api-bypass.html&#41;)
+[How it works (Chinese)](./Plan.md)
 
 ## Integration
 
 Gradle:
 
-```gradle
+``` gradle
 repositories {
     mavenCentral()
 }
@@ -28,35 +29,35 @@ dependencies {
 ## Usage
 
 1. Invoke a restricted method:
-    ```java
+    ``` java
     HiddenApiBypass.invoke(ApplicationInfo.class, new ApplicationInfo(), "usesNonSdkApi"/*, args*/)
     ```
 1. Invoke restricted constructor:
-    ```java
+    ``` java
     Object instance = HiddenApiBypass.newInstance(Class.forName("android.app.IActivityManager$Default")/*, args*/);
     ```
 1. Get all methods including restricted ones from a class:
-    ```java
+    ``` java
     var allMethods = HiddenApiBypass.getDeclaredMethods(ApplicationInfo.class);
     ((Method).stream(allMethods).filter(e -> e.getName().equals("usesNonSdkApi")).findFirst().get()).invoke(new ApplicationInfo());
     ```
 1. Get all non-static fields including restricted ones from a class:
-    ```java
+    ``` java
     var allInstanceFields = HiddenApiBypass.getInstanceFields(ApplicationInfo.class);
     ((Method).stream(allInstanceFields).filter(e -> e.getName().equals("longVersionCode")).findFirst().get()).get(new ApplicationInfo());
     ```
 1. Get all static fields including restricted ones from a class:
-    ```java
+    ``` java
     var allStaticFields = HiddenApiBypass.getStaticFields(ApplicationInfo.class);
     ((Method).stream(allInstanceFields).filter(e -> e.getName().equals("HIDDEN_API_ENFORCEMENT_DEFAULT")).findFirst().get()).get(null);
     ```
 1. Get specific class method or class constructor
-    ```java
+    ``` java
     var ctor = HiddenApiBypass.getDeclaredConstructor(ClipDrawable.class /*, args */);
     var method = HiddenApiBypass.getDeclaredMethod(ApplicationInfo.class, "getHiddenApiEnforcementPolicy" /*, args */);
     ```
 1. Add a class to exemption list:
-    ```java
+    ``` java
     HiddenApiBypass.addHiddenApiExemptions(
         "Landroid/content/pm/ApplicationInfo;", // one specific class
         "Ldalvik/system" // all classes in packages dalvik.system
@@ -64,7 +65,7 @@ dependencies {
     );
     ```
     if you are going to add all classes to exemption list, just leave an empty prefix:
-    ```java
+    ``` java
     HiddenApiBypass.addHiddenApiExemptions("");
     ```
 ## License
