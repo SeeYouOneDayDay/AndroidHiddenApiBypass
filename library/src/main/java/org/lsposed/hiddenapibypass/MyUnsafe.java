@@ -31,16 +31,16 @@ import java.lang.reflect.Method;
 
 /**
  * @Copyright © 2022 sanbo Inc. All rights reserved.
- * @Description: unsafe class From other project
+ * @Description: unsafe class From FastUploadId
  * @Version: 1.0
  * @Create: 2022-08-09 17:42:12
  * @author: sanbo
  */
-public final class Mu {
+public final class MyUnsafe {
     private static Object unsafe;
     private static Class unsafeClass;
 
-    private Mu() {
+    private MyUnsafe() {
     }
 
     static {
