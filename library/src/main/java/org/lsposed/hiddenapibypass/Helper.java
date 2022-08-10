@@ -70,10 +70,15 @@ public class Helper {
         private transient short virtualMethodsOffset;
     }
 
+    //http://aospxref.com/android-12.0.0_r3/xref/libcore/ojluni/src/main/java/java/lang/reflect/Executable.java
+    //      public abstract class Executable extends AccessibleObject implements Member, GenericDeclaration
+    //http://aospxref.com/android-7.1.2_r39/xref/libcore/libart/src/main/java/java/lang/reflect/AbstractMethod.java
+    //      public abstract class AbstractMethod extends AccessibleObject
     static public class AccessibleObject {
         private boolean override;
     }
-
+    // Before Oreo, it is: java.lang.reflect.AbstractMethod
+    // After Oreo, it is: java.lang.reflect.Executable
     static final public class Executable extends AccessibleObject {
         private Class declaringClass;
         private Class declaringClassOfOverriddenMethod;
