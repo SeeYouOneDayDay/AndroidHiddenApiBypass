@@ -1,8 +1,8 @@
-import com.android.build.api.dsl.ManagedVirtualDevice
+//import com.android.build.api.dsl.ManagedVirtualDevice
 plugins {
     id 'com.android.library'
-    id 'maven-publish'
-    id 'signing'
+//    id 'maven-publish'
+//    id 'signing'
 }
 
 android {
@@ -24,55 +24,55 @@ android {
         }
     }
 
-    packagingOptions {
-        resources {
-            excludes += '/META-INF/**'
-            excludes += '/*.properties'
-        }
-    }
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
+//    packagingOptions {
+//        resources {
+//            excludes += '/META-INF/**'
+//            excludes += '/*.properties'
+//        }
+//    }
+//    publishing {
+//        singleVariant("release") {
+//            withSourcesJar()
+//            withJavadocJar()
+//        }
+//    }
     testOptions {
-        devices {
-            api32(ManagedVirtualDevice) {
-                device = "Pixel 2"
-                apiLevel = 32
-                abi = "x86_64"
-            }
-            api31(ManagedVirtualDevice) {
-                device = "Pixel 2"
-                apiLevel = 31
-                abi = "x86_64"
-            }
-            api30(ManagedVirtualDevice) {
-                device = "Pixel 2"
-                apiLevel = 30
-                abi = "x86_64"
-            }
-            api29(ManagedVirtualDevice) {
-                device = "Pixel 2"
-                apiLevel = 29
-                abi = "x86_64"
-            }
-            api28(ManagedVirtualDevice) {
-                device = "Pixel 2"
-                apiLevel = 28
-                abi = "x86_64"
-            }
-        }
-        deviceGroups {
-            phones {
-                targetDevices.addAll(devices)
-            }
-        }
-        emulatorSnapshots {
-            enableForTestFailures false
-            maxSnapshotsForTestFailures 0
-        }
+//        devices {
+//            api32(ManagedVirtualDevice) {
+//                device = "Pixel 2"
+//                apiLevel = 32
+//                abi = "x86_64"
+//            }
+//            api31(ManagedVirtualDevice) {
+//                device = "Pixel 2"
+//                apiLevel = 31
+//                abi = "x86_64"
+//            }
+//            api30(ManagedVirtualDevice) {
+//                device = "Pixel 2"
+//                apiLevel = 30
+//                abi = "x86_64"
+//            }
+//            api29(ManagedVirtualDevice) {
+//                device = "Pixel 2"
+//                apiLevel = 29
+//                abi = "x86_64"
+//            }
+//            api28(ManagedVirtualDevice) {
+//                device = "Pixel 2"
+//                apiLevel = 28
+//                abi = "x86_64"
+//            }
+//        }
+//        deviceGroups {
+//            phones {
+//                targetDevices.addAll(devices)
+//            }
+//        }
+//        emulatorSnapshots {
+//            enableForTestFailures false
+//            maxSnapshotsForTestFailures 0
+//        }
         unitTests.returnDefaultValues = true
         resultsDir = "${project.buildDir}/ut_results"
     }
@@ -123,60 +123,60 @@ dependencies {
 //    androidTestCompileOnly project(":stub")
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            group 'org.lsposed.hiddenapibypass'
-            artifactId 'hiddenapibypass'
-            version android.defaultConfig.versionName
-            afterEvaluate {
-                from components.release
-            }
-            pom {
-                name = 'Android Hidden Api Bypass'
-                description = 'Bypass restrictions on non-SDK interfaces'
-                url = 'https://github.com/LSPosed/AndroidHiddenApiBypass'
-                licenses {
-                    license {
-                        name = 'The Apache Software License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                developers {
-                    developer {
-                        name = 'Lsposed'
-                        url = 'https://lsposed.org'
-                    }
-                }
-                scm {
-                    connection = 'scm:git:https://github.com/LSPosed/AndroidHiddenApiBypass.git'
-                    url = 'https://github.com/LSPosed/AndroidHiddenApiBypass'
-                }
-            }
-        }
-    }
-    repositories {
-        maven {
-            name 'ossrh'
-            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-            credentials PasswordCredentials
-        }
-        maven {
-            name 'GitHubPackages'
-            url = 'https://maven.pkg.github.com/LSPosed/AndroidHiddenApiBypass'
-            credentials {
-                username System.getenv('GITHUB_ACTOR')
-                password System.getenv('GITHUB_TOKEN')
-            }
-        }
-    }
-}
-
-signing {
-    def signingKey = findProperty("signingKey")
-    def signingPassword = findProperty("signingPassword")
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-    }
-    sign publishing.publications
-}
+//publishing {
+//    publications {
+//        mavenJava(MavenPublication) {
+//            group 'org.lsposed.hiddenapibypass'
+//            artifactId 'hiddenapibypass'
+//            version android.defaultConfig.versionName
+//            afterEvaluate {
+//                from components.release
+//            }
+//            pom {
+//                name = 'Android Hidden Api Bypass'
+//                description = 'Bypass restrictions on non-SDK interfaces'
+//                url = 'https://github.com/LSPosed/AndroidHiddenApiBypass'
+//                licenses {
+//                    license {
+//                        name = 'The Apache Software License, Version 2.0'
+//                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+//                    }
+//                }
+//                developers {
+//                    developer {
+//                        name = 'Lsposed'
+//                        url = 'https://lsposed.org'
+//                    }
+//                }
+//                scm {
+//                    connection = 'scm:git:https://github.com/LSPosed/AndroidHiddenApiBypass.git'
+//                    url = 'https://github.com/LSPosed/AndroidHiddenApiBypass'
+//                }
+//            }
+//        }
+//    }
+//    repositories {
+//        maven {
+//            name 'ossrh'
+//            url 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+//            credentials PasswordCredentials
+//        }
+//        maven {
+//            name 'GitHubPackages'
+//            url = 'https://maven.pkg.github.com/LSPosed/AndroidHiddenApiBypass'
+//            credentials {
+//                username System.getenv('GITHUB_ACTOR')
+//                password System.getenv('GITHUB_TOKEN')
+//            }
+//        }
+//    }
+//}
+//
+//signing {
+//    def signingKey = findProperty("signingKey")
+//    def signingPassword = findProperty("signingPassword")
+//    if (signingKey != null && signingPassword != null) {
+//        useInMemoryPgpKeys(signingKey, signingPassword)
+//    }
+//    sign publishing.publications
+//}
