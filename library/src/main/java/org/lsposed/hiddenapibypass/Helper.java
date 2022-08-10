@@ -22,6 +22,7 @@ import java.lang.reflect.Member;
 
 @SuppressWarnings("unused")
 public class Helper {
+    //http://aospxref.com/android-12.0.0_r3/xref/libcore/ojluni/src/main/java/java/lang/invoke/MethodHandle.java
     static public class MethodHandle {
         private final MethodType type = null;
         private MethodType nominalType;
@@ -32,15 +33,20 @@ public class Helper {
         protected final long artFieldOrMethod = 0;
     }
 
+    //http://aospxref.com/android-12.0.0_r3/xref/libcore/ojluni/src/main/java/java/lang/invoke/MethodHandleImpl.java
+    //public class MethodHandleImpl extends MethodHandle implements Cloneable
     static final public class MethodHandleImpl extends MethodHandle {
         private final MethodHandleInfo info = null;
     }
 
+    //http://aospxref.com/android-12.0.0_r3/xref/libcore/ojluni/src/main/java/java/lang/invoke/MethodHandleImpl.java
+    // MethodHandleImpl$HandleInfo
     static final public class HandleInfo {
         private final Member member = null;
         private final MethodHandle handle = null;
     }
 
+    //http://aospxref.com/android-12.0.0_r3/xref/libcore/ojluni/src/main/java/java/lang/Class.java
     static final public class Class {
         private transient ClassLoader classLoader;
         private transient java.lang.Class<?> componentType;
@@ -77,6 +83,7 @@ public class Helper {
     static public class AccessibleObject {
         private boolean override;
     }
+
     // Before Oreo, it is: java.lang.reflect.AbstractMethod
     // After Oreo, it is: java.lang.reflect.Executable
     static final public class Executable extends AccessibleObject {
