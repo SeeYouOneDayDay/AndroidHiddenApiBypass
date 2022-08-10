@@ -18,7 +18,6 @@ package org.lsposed.hiddenapibypass;
 
 import static android.os.Build.VERSION.SDK_INT;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.util.Log;
 
@@ -55,23 +54,23 @@ public final class HiddenApiBypass {
 
     static {
         try {
-            methodOffset = MyUnsafe.objectFieldOffset(Helper.Executable.class.getDeclaredField("artMethod"));
-            classOffset = MyUnsafe.objectFieldOffset(Helper.Executable.class.getDeclaredField("declaringClass"));
-            artOffset = MyUnsafe.objectFieldOffset(Helper.MethodHandle.class.getDeclaredField("artFieldOrMethod"));
-            infoOffset = MyUnsafe.objectFieldOffset(Helper.MethodHandleImpl.class.getDeclaredField("info"));
-            methodsOffset = MyUnsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("methods"));
-            iFieldOffset = MyUnsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("iFields"));
-            sFieldOffset = MyUnsafe.objectFieldOffset(Helper.Class.class.getDeclaredField("sFields"));
-            memberOffset = MyUnsafe.objectFieldOffset(Helper.HandleInfo.class.getDeclaredField("member"));
+            methodOffset = UnsafeWrapper.objectFieldOffset(Helper.Executable.class.getDeclaredField("artMethod"));
+            classOffset = UnsafeWrapper.objectFieldOffset(Helper.Executable.class.getDeclaredField("declaringClass"));
+            artOffset = UnsafeWrapper.objectFieldOffset(Helper.MethodHandle.class.getDeclaredField("artFieldOrMethod"));
+            infoOffset = UnsafeWrapper.objectFieldOffset(Helper.MethodHandleImpl.class.getDeclaredField("info"));
+            methodsOffset = UnsafeWrapper.objectFieldOffset(Helper.Class.class.getDeclaredField("methods"));
+            iFieldOffset = UnsafeWrapper.objectFieldOffset(Helper.Class.class.getDeclaredField("iFields"));
+            sFieldOffset = UnsafeWrapper.objectFieldOffset(Helper.Class.class.getDeclaredField("sFields"));
+            memberOffset = UnsafeWrapper.objectFieldOffset(Helper.HandleInfo.class.getDeclaredField("member"));
             Method mA = Helper.NeverCall.class.getDeclaredMethod("a");
             Method mB = Helper.NeverCall.class.getDeclaredMethod("b");
             mA.setAccessible(true);
             mB.setAccessible(true);
             MethodHandle mhA = MethodHandles.lookup().unreflect(mA);
             MethodHandle mhB = MethodHandles.lookup().unreflect(mB);
-            long aAddr = MyUnsafe.getLong(mhA, artOffset);
-            long bAddr = MyUnsafe.getLong(mhB, artOffset);
-            long aMethods = MyUnsafe.getLong(Helper.NeverCall.class, methodsOffset);
+            long aAddr = UnsafeWrapper.getLong(mhA, artOffset);
+            long bAddr = UnsafeWrapper.getLong(mhB, artOffset);
+            long aMethods = UnsafeWrapper.getLong(Helper.NeverCall.class, methodsOffset);
             artMethodSize = bAddr - aAddr;
             LL.v("[satic artMethodSize]" + artMethodSize + " " +
                     Long.toString(aAddr, 16) + ", " +
@@ -84,9 +83,9 @@ public final class HiddenApiBypass {
             fJ.setAccessible(true);
             MethodHandle mhI = MethodHandles.lookup().unreflectGetter(fI);
             MethodHandle mhJ = MethodHandles.lookup().unreflectGetter(fJ);
-            long iAddr = MyUnsafe.getLong(mhI, artOffset);
-            long jAddr = MyUnsafe.getLong(mhJ, artOffset);
-            long iFields = MyUnsafe.getLong(Helper.NeverCall.class, iFieldOffset);
+            long iAddr = UnsafeWrapper.getLong(mhI, artOffset);
+            long jAddr = UnsafeWrapper.getLong(mhJ, artOffset);
+            long iFields = UnsafeWrapper.getLong(Helper.NeverCall.class, iFieldOffset);
             artFieldSize = jAddr - iAddr;
             LL.v("[satic artFieldSize]" + artFieldSize + " " +
                     Long.toString(iAddr, 16) + ", " +
@@ -170,18 +169,18 @@ public final class HiddenApiBypass {
         Method stub = Helper.InvokeStub.class.getDeclaredMethod("invoke", Object[].class);
         Constructor<?> ctor = Helper.InvokeStub.class.getDeclaredConstructor(Object[].class);
         ctor.setAccessible(true);
-        long methods = MyUnsafe.getLong(clazz, methodsOffset);
+        long methods = UnsafeWrapper.getLong(clazz, methodsOffset);
         if (methods == 0) throw new NoSuchMethodException("Cannot find matching constructor");
-        int numMethods = MyUnsafe.getInt(methods);
+        int numMethods = UnsafeWrapper.getInt(methods);
         LL.d("[newInstance]" + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            MyUnsafe.putLong(stub, methodOffset, method);
+            UnsafeWrapper.putLong(stub, methodOffset, method);
             LL.v("[newInstance] got " + clazz.getTypeName() + "." + stub.getName() +
                     "(" + Arrays.stream(stub.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             if ("<init>".equals(stub.getName())) {
-                MyUnsafe.putLong(ctor, methodOffset, method);
-                MyUnsafe.putObject(ctor, classOffset, clazz);
+                UnsafeWrapper.putLong(ctor, methodOffset, method);
+                UnsafeWrapper.putObject(ctor, classOffset, clazz);
                 Class<?>[] params = ctor.getParameterTypes();
                 if (checkArgsForInvokeMethod(params, initargs))
                     return ctor.newInstance(initargs);
@@ -206,13 +205,13 @@ public final class HiddenApiBypass {
         }
         Method stub = Helper.InvokeStub.class.getDeclaredMethod("invoke", Object[].class);
         stub.setAccessible(true);
-        long methods = MyUnsafe.getLong(clazz, methodsOffset);
+        long methods = UnsafeWrapper.getLong(clazz, methodsOffset);
         if (methods == 0) throw new NoSuchMethodException("Cannot find matching method");
-        int numMethods = MyUnsafe.getInt(methods);
+        int numMethods = UnsafeWrapper.getInt(methods);
         LL.d("[invoke] " + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            MyUnsafe.putLong(stub, methodOffset, method);
+            UnsafeWrapper.putLong(stub, methodOffset, method);
             LL.v("[invoke] got " + clazz.getTypeName() + "." + stub.getName() +
                     "(" + Arrays.stream(stub.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             if (methodName.equals(stub.getName())) {
@@ -242,20 +241,20 @@ public final class HiddenApiBypass {
         } catch (NoSuchMethodException | IllegalAccessException e) {
             return list;
         }
-        long methods = MyUnsafe.getLong(clazz, methodsOffset);
+        long methods = UnsafeWrapper.getLong(clazz, methodsOffset);
         if (methods == 0) return list;
-        int numMethods = MyUnsafe.getInt(methods);
+        int numMethods = UnsafeWrapper.getInt(methods);
         LL.d("[getDeclaredMethods]" + clazz + " has " + numMethods + " methods");
         for (int i = 0; i < numMethods; i++) {
             long method = methods + i * artMethodSize + artMethodBias;
-            MyUnsafe.putLong(mh, artOffset, method);
-            MyUnsafe.putObject(mh, infoOffset, null);
+            UnsafeWrapper.putLong(mh, artOffset, method);
+            UnsafeWrapper.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) MyUnsafe.getObject(mh, infoOffset);
-            Executable member = (Executable) MyUnsafe.getObject(info, memberOffset);
+            MethodHandleInfo info = (MethodHandleInfo) UnsafeWrapper.getObject(mh, infoOffset);
+            Executable member = (Executable) UnsafeWrapper.getObject(info, memberOffset);
             LL.v("[getDeclaredMethods] got " + clazz.getTypeName() + "." + member.getName() +
                     "(" + Arrays.stream(member.getParameterTypes()).map(Type::getTypeName).collect(Collectors.joining()) + ")");
             list.add(member);
@@ -334,20 +333,20 @@ public final class HiddenApiBypass {
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return list;
         }
-        long fields = MyUnsafe.getLong(clazz, iFieldOffset);
+        long fields = UnsafeWrapper.getLong(clazz, iFieldOffset);
         if (fields == 0) return list;
-        int numFields = MyUnsafe.getInt(fields);
+        int numFields = UnsafeWrapper.getInt(fields);
         LL.d("[getInstanceFields]" + clazz + " has " + numFields + " instance fields");
         for (int i = 0; i < numFields; i++) {
             long field = fields + i * artFieldSize + artFieldBias;
-            MyUnsafe.putLong(mh, artOffset, field);
-            MyUnsafe.putObject(mh, infoOffset, null);
+            UnsafeWrapper.putLong(mh, artOffset, field);
+            UnsafeWrapper.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) MyUnsafe.getObject(mh, infoOffset);
-            Field member = (Field) MyUnsafe.getObject(info, memberOffset);
+            MethodHandleInfo info = (MethodHandleInfo) UnsafeWrapper.getObject(mh, infoOffset);
+            Field member = (Field) UnsafeWrapper.getObject(info, memberOffset);
             LL.v("[getInstanceFields] got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
             list.add(member);
         }
@@ -372,20 +371,20 @@ public final class HiddenApiBypass {
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return list;
         }
-        long fields = MyUnsafe.getLong(clazz, sFieldOffset);
+        long fields = UnsafeWrapper.getLong(clazz, sFieldOffset);
         if (fields == 0) return list;
-        int numFields = MyUnsafe.getInt(fields);
+        int numFields = UnsafeWrapper.getInt(fields);
         LL.d("[getStaticFields]" + clazz + " has " + numFields + " static fields");
         for (int i = 0; i < numFields; i++) {
             long field = fields + i * artFieldSize + artFieldBias;
-            MyUnsafe.putLong(mh, artOffset, field);
-            MyUnsafe.putObject(mh, infoOffset, null);
+            UnsafeWrapper.putLong(mh, artOffset, field);
+            UnsafeWrapper.putObject(mh, infoOffset, null);
             try {
                 MethodHandles.lookup().revealDirect(mh);
             } catch (Throwable ignored) {
             }
-            MethodHandleInfo info = (MethodHandleInfo) MyUnsafe.getObject(mh, infoOffset);
-            Field member = (Field) MyUnsafe.getObject(info, memberOffset);
+            MethodHandleInfo info = (MethodHandleInfo) UnsafeWrapper.getObject(mh, infoOffset);
+            Field member = (Field) UnsafeWrapper.getObject(info, memberOffset);
             LL.v("[getStaticFields] got " + member.getType() + " " + clazz.getTypeName() + "." + member.getName());
             list.add(member);
         }

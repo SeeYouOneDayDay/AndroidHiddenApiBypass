@@ -36,11 +36,11 @@ import java.lang.reflect.Method;
  * @Create: 2022-08-09 17:42:12
  * @author: sanbo
  */
-public final class MyUnsafe {
+public final class UnsafeWrapper {
     private static Object unsafe;
     private static Class unsafeClass;
 
-    private MyUnsafe() {
+    private UnsafeWrapper() {
     }
 
     static {

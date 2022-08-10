@@ -36,7 +36,10 @@
 我们好像还有一个非常适合玩魔法的 Java 自带的 API：`Unsafe`!
 这个魔法类顾名思义，是非常不安全的：它可以纯 Java 读写内存！也就是说，有了这个东西，我们就可以读写类中的任意数据成员了！甚至如果拿到 native 指针，还能直接读指针指向的内存内容。那么我们是不是可以藉此来读取类的隐藏函数？答案是肯定的。
 
-但是，ART 中的函数不是存在一个 Java 数组中乖乖等着给你拿的。ART 的模型是 Java 代码中的重要类和 native 代码中的一个类相互 mirror：即共享同一块内存。所以在 Java 中读写这些 Java 类对象的成员相当于同时修改对应的 native 对象成员。一些常见的类就是 `Class`、`Method`、`Field` 等。于是为了方便 native 代码访问这些对象，这些类的成员很多都不是以 Java 对象形式存在，而是以 native 指针形式存在。比如一个 `Class` 对应的 Java 结构如下[5](https://lovesykun.cn/archives/android-hidden-api-bypass.html#fn:3)：
+但是，ART 中的函数不是存在一个 Java 数组中乖乖等着给你拿的。ART 的模型是 Java 代码中的重要类和 native 代码中的一个类相互 mirror：即共享同一块内存。
+  所以在 Java 中读写这些 Java 类对象的成员相当于同时修改对应的 native 对象成员。一些常见的类就是 `Class`、`Method`、`Field` 等。
+  于是为了方便 native 代码访问这些对象，这些类的成员很多都不是以 Java 对象形式存在，而是以 native 指针形式存在。
+  比如一个 `Class` 对应的 Java 结构如下[5](https://lovesykun.cn/archives/android-hidden-api-bypass.html#fn:3)：
 
 ``` java
 public final class Class<T> {
@@ -57,9 +60,11 @@ public final class Class<T> {
 
 ```
 
-可以看到有很多 `long` 成员，这些就是 native 指针了。很可惜，我们想要的 `methods` 就是以指针形式存在的，而且指针对应的是 `ArtMethod` 的 native 对象，并非一个对应到 Java 的 mirror 的 `Method`。感兴趣的小伙伴可以看看 `Executable` 的实现，其中有一个 `long` 成员是 `artMethod` 对应的就是这个东西。
+可以看到有很多 `long` 成员，这些就是 native 指针了。很可惜，我们想要的 `methods` 就是以指针形式存在的，而且指针对应的是 `ArtMethod` 的 native 对象，
+  并非一个对应到 Java 的 mirror 的 `Method`。感兴趣的小伙伴可以看看 `Executable` 的实现，其中有一个 `long` 成员是 `artMethod` 对应的就是这个东西。
 
-那么我们需要把这个 `methods` 指针对应的 `artMethod` 给一个一个枚举出来，并且想办法把他们转换为 Java 可以用的 `Executable` （用 `Executable` 是这个包含 `Constructor` 和 `Method`）。
+那么我们需要把这个 `methods` 指针对应的 `artMethod` 给一个一个枚举出来，并且想办法把他们转换为 Java 可以用的 `Executable` 
+  （用 `Executable` 是这个包含 `Constructor` 和 `Method`）。
 
 ### 提取 `ArtMethod`
 
@@ -89,18 +94,17 @@ class Class {
 
 这里解释它是一个 `length-prefixed array` 对象。实际上我们看使用它的地方：
 
-```cpp
+``` cpp
 inline LengthPrefixedArray<ArtMethod>* Class::GetMethodsPtr() {
   return reinterpret_cast<LengthPrefixedArray<ArtMethod>*>(
       static_cast<uintptr_t>(GetField64(OFFSET_OF_OBJECT_MEMBER(Class, methods_))));
 }
 
-C++
 ```
 
 可以看到，它强转成一个模板类 `LengthPrefixedArray` 的指针，其部分定义如下：
 
-```cpp
+``` cpp
 template<typename T>
 class LengthPrefixedArray {
   static size_t OffsetOfElement(size_t index,
@@ -116,16 +120,19 @@ class LengthPrefixedArray {
   uint32_t size_;
   uint8_t data_[0];
 };
-
 ```
 
-很明显，“类”如其名，就是一个数组，但是前面塞了一个 `uint32_t` 的长度的数组而已。并且看其取成员的函数 `AtUnchecked`，可以看到数组首元素就是 `this + sizeof(size_)` 对齐到 `alignof(T)`。`sizeof(size_)` 就是 `4`，而 `alignof` 的话，看 `ArtMethod` 定义是没有 `alignas` 或者 `pack` 的属性定义，那么在 32 位下就是 `4` 在 64 位下就是 `8`，对应 `Unsafe` 就是 `addressSize()` 了。
+很明显，“类”如其名，就是一个数组，但是前面塞了一个 `uint32_t` 的长度的数组而已。并且看其取成员的函数 `AtUnchecked`，
+  可以看到数组首元素就是 `this + sizeof(size_)` 对齐到 `alignof(T)`。`sizeof(size_)` 就是 `4`，而 `alignof` 的话，
+  看 `ArtMethod` 定义是没有 `alignas` 或者 `pack` 的属性定义，那么在 32 位下就是 `4` 在 64 位下就是 `8`，对应 `Unsafe` 就是 `addressSize()` 了。
 
 总结来说，首个元素地址就是 `methods + unsafe.addressSize()`。而读取方法数量就是 `unsafe.readInt(methods)`。
 
 ## 计算 `ArtMethod` 大小
 
-拿到数组首个元素的地址 `base`，接下来第 `i` 个元素就是 `base + i * size` 啦。但是问题来了，怎么计算 `ArtMethod` 的大小呢？这个直接参考 `SandHook` 的实现就可以了：直接在 Java 定义两个连续的方法，然后指针相减就是了[7](https://lovesykun.cn/archives/android-hidden-api-bypass.html#fn:5)。
+拿到数组首个元素的地址 `base`，接下来第 `i` 个元素就是 `base + i * size` 啦。但是问题来了，怎么计算 `ArtMethod` 的大小呢？
+  这个直接参考 `SandHook` 的实现就可以了：直接在 Java 定义两个连续的方法，
+  然后指针相减就是了[7](https://lovesykun.cn/archives/android-hidden-api-bypass.html#fn:5)。
 
 这时候就涉及第二个问题：怎么从 Java 的 `Method` 转换成 `ArtMethod` 指针？反过来又如何？
 
@@ -142,7 +149,6 @@ public abstract class Executable {
         return artMethod;
     }
 }
-
 ```
 
 非常明确地说明给 `java.lang.invoke.*` 接口使用的。这很好，因为这些接口都是 Java 原生地公开接口，谷歌可不能隐藏他们。那么怎么被使用的呢？或者说，怎么被转换的呢？
@@ -152,7 +158,6 @@ public abstract class MethodHandle {
   //其他成员...
   /** @hide */ protected final long artFieldOrMethod;
 }
-
 ```
 
 原来是放在了 `MethodHadle` 上。而且这个东西也是一个 mirror 类，native 和 Java 一对一的。也就是说，只要把一个 `Method` 转换成 `MethodHandle` 然后读出这个 `artFieldOrMethod` 就可以了。
@@ -167,7 +172,6 @@ public abstract class MethodHandle {
   ObjPtr<mirror::Executable> executable = soa.Decode<mirror::Executable>(javaMethod);
   const bool accessible = executable->IsAccessible();
   ArtMethod* m = executable->GetArtMethod();
-
 ```
 
 # 稳定性分析
